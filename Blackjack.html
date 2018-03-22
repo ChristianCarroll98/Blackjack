@@ -1,0 +1,1963 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>Blackjack</title>
+	<style type='text/css'>
+		canvas { border: 1px solid black; }
+	</style>
+</head>
+<body>
+	<h1>Blackjack</h1>
+	<canvas id='canvas' width='800' height='600'></canvas>
+	<script type='text/javascript'>
+		var ctx;
+		
+		var MENU, PLAYMENU, PLAY, GAMEOVER, INSTRUCTIONS, CREDITS, QUIT;
+		var timerID;
+		var state;
+		
+		var buttons;
+		var mouse;
+		var cardBack;
+		var menuCards;
+		var cards;
+		
+		var playerThree, playerOne, playerTwo, playerFour;
+		var rotation;
+		var zoomScale;
+		var zoom;
+		var cardScale;
+		var setUp;
+		var turn;
+		var cardDrawn;
+		var cardsDrawn;
+		var turnDone;
+		var waitEnd;
+		var waitShow;
+		var waitEndTime;
+		var waitShowTime;
+		var winners;
+		var winCheck;
+		var players;
+		var playersNum;
+		var compCheck;
+		
+		var showSecret;
+		
+		function init(){
+			
+			ctx.font = "24pt Arial, sans-serif";
+			ctx.textBaseline = "top";
+			
+			timerID = -1;
+			MENU = 0, PLAYMENU = 1, PLAY = 2, GAMEOVER = 3, INSTRUCTIONS = 4, CREDITS = 5, QUIT = 6;
+			state = MENU;
+			
+			mouse = { x:0, y:0, clicked: false };
+			
+			cardBack = new Image();
+			cardBack.src = "images/b1fv.png";
+			
+			menuCards = new Array(0);
+			
+			var mdk = new Image();
+			mdk.src = "images/dk.png";
+			menuCards.push(mdk);
+			
+			var ms1 = new Image();
+			ms1.src = "images/s1.png";
+			menuCards.push(ms1);
+			
+			cards = initCards(initImgs());
+			
+			buttons = {
+				menuPlay:/*-------*/{ x:ctx.canvas.width/2-325, y:ctx.canvas.height/2-187.5, w:200, h:75   },
+				menuInstructions:   { x:ctx.canvas.width/2-325, y:ctx.canvas.height/2-87.5,  w:200, h:75   },
+				menuCredits:/*----*/{ x:ctx.canvas.width/2-325, y:ctx.canvas.height/2+12.5,  w:200, h:75   },
+				menuQuit:/*-------*/{ x:ctx.canvas.width/2-325, y:ctx.canvas.height/2+112.5, w:200, h:75   },
+				playOnePlayer:/*--*/{ x:ctx.canvas.width/2-110, y:ctx.canvas.height/2-187.5, w:220, h:75   },
+				playTwoPlayers:/*-*/{ x:ctx.canvas.width/2-110, y:ctx.canvas.height/2-87.5,  w:220, h:75   },
+				playThreePlayers:   { x:ctx.canvas.width/2-110, y:ctx.canvas.height/2+12.5,  w:220, h:75   },
+				playFourPlayers:/**/{ x:ctx.canvas.width/2-110, y:ctx.canvas.height/2+112.5, w:220, h:75   },
+				playMenu:/*-------*/{ x:ctx.canvas.width/2-375, y:ctx.canvas.height/2-275,   w:100, h:37.5 },
+				playOneHit:/*-----*/{ x:ctx.canvas.width/2-130, y:ctx.canvas.height/2-10,    w:100, h:37.5 },
+				playOneStay:/*----*/{ x:ctx.canvas.width/2+30,  y:ctx.canvas.height/2-10,    w:100, h:37.5 },
+				playOneShowCards:   { x:ctx.canvas.width/2+210, y:ctx.canvas.height/2-140,   w:100, h:37.5 },
+				playTwoHit:/*-----*/{ x:ctx.canvas.width/2-130, y:ctx.canvas.height/2-10,    w:100, h:37.5 },
+				playTwoStay:/*----*/{ x:ctx.canvas.width/2+30,  y:ctx.canvas.height/2-10,    w:100, h:37.5 },
+				playTwoShowCards:   { x:ctx.canvas.width/2+210, y:ctx.canvas.height/2-140,   w:100, h:37.5 },
+				playThreeHit:/*---*/{ x:ctx.canvas.width/2-130, y:ctx.canvas.height/2-10,    w:100, h:37.5 },
+				playThreeStay:/*--*/{ x:ctx.canvas.width/2+30,  y:ctx.canvas.height/2-10,    w:100, h:37.5 },
+				playThreeShowCards: { x:ctx.canvas.width/2+210, y:ctx.canvas.height/2-140,   w:100, h:37.5 },
+				playFourHit:/*----*/{ x:ctx.canvas.width/2-130, y:ctx.canvas.height/2-10,    w:100, h:37.5 },
+				playFourStay:/*---*/{ x:ctx.canvas.width/2+30,  y:ctx.canvas.height/2-10,    w:100, h:37.5 },
+				playFourShowCards:  { x:ctx.canvas.width/2+210, y:ctx.canvas.height/2-140,   w:100, h:37.5 },
+				gameOverMenu:/*---*/{ x:ctx.canvas.width/2-250, y:ctx.canvas.height/2+175,   w:200, h:75   },
+				gameOverReplay:/*-*/{ x:ctx.canvas.width/2+50,  y:ctx.canvas.height/2+175,   w:200, h:75   },
+				instructionsMenu:   { x:ctx.canvas.width/2-375, y:ctx.canvas.height/2-275,   w:100, h:37.5 },
+				creditsMenu:/*----*/{ x:ctx.canvas.width/2-375, y:ctx.canvas.height/2-275,   w:100, h:37.5 },
+				quitQuit:/*-------*/{ x:ctx.canvas.width/2-250, y:ctx.canvas.height/2+100,   w:200, h:75   },
+				quitMenu:/*-------*/{ x:ctx.canvas.width/2+50,  y:ctx.canvas.height/2+100,   w:200, h:75   },
+				secret:/*---------*/{ x:160,                    y:450,                       w:60,  h:30   },
+			};
+			
+			initPlay();
+			
+			secret = new Image();
+			secret.src = "images/secret.png";
+		}
+		
+		//----------------------------------------------------------------------------MENU----------------------------------------------------------------------------//
+		function updateMenu(){
+			if((contains(buttons.menuPlay,mouse) && mouse.clicked)===true){
+				mouse.clicked=false;
+				changeState(PLAYMENU);
+			}
+			else if((contains(buttons.menuInstructions,mouse) && mouse.clicked)===true){
+				mouse.clicked=false;
+				changeState(INSTRUCTIONS);
+			}
+			else if((contains(buttons.menuCredits,mouse) && mouse.clicked)===true){
+				mouse.clicked=false;
+				changeState(CREDITS);
+			}
+			else if((contains(buttons.menuQuit,mouse) && mouse.clicked)===true){
+				mouse.clicked=false;
+				changeState(QUIT);
+			}
+			
+			if(mouse.clicked)
+				mouse.clicked=false;
+		}
+		function drawMenu(){
+			ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+			
+			ctx.fillStyle = "#FFFFFF";
+			ctx.fillRect(buttons.menuPlay.x, buttons.menuPlay.y, buttons.menuPlay.w, buttons.menuPlay.h);
+			ctx.fillRect(buttons.menuInstructions.x, buttons.menuInstructions.y, buttons.menuInstructions.w, buttons.menuInstructions.h);
+			ctx.fillRect(buttons.menuCredits.x, buttons.menuCredits.y, buttons.menuCredits.w, buttons.menuCredits.h);
+			ctx.fillRect(buttons.menuQuit.x, buttons.menuQuit.y, buttons.menuQuit.w, buttons.menuQuit.h);
+			
+			if(contains(buttons.menuPlay,mouse)){
+				ctx.fillStyle = "#FFFFCC";
+				ctx.fillRect(buttons.menuPlay.x, buttons.menuPlay.y, buttons.menuPlay.w, buttons.menuPlay.h);
+			}
+			else if(contains(buttons.menuInstructions,mouse)){
+				ctx.fillStyle = "#FFFFCC";
+				ctx.fillRect(buttons.menuInstructions.x, buttons.menuInstructions.y, buttons.menuInstructions.w, buttons.menuInstructions.h);
+			}
+			else if(contains(buttons.menuCredits,mouse)){
+				ctx.fillStyle = "#FFFFCC";
+				ctx.fillRect(buttons.menuCredits.x, buttons.menuCredits.y, buttons.menuCredits.w, buttons.menuCredits.h);
+			}
+			else if(contains(buttons.menuQuit,mouse)){
+				ctx.fillStyle = "#FFFFCC";
+				ctx.fillRect(buttons.menuQuit.x, buttons.menuQuit.y, buttons.menuQuit.w, buttons.menuQuit.h);
+			}
+			
+			ctx.fillStyle = "#000000";
+			ctx.strokeRect(buttons.menuPlay.x, buttons.menuPlay.y, buttons.menuPlay.w, buttons.menuPlay.h);
+			ctx.fillText("Play", buttons.menuPlay.x+100-ctx.measureText("Play").width/2, buttons.menuPlay.y+20);
+			ctx.strokeRect(buttons.menuInstructions.x, buttons.menuInstructions.y, buttons.menuInstructions.w, buttons.menuInstructions.h);
+			ctx.fillText("Instructions", buttons.menuInstructions.x+100-ctx.measureText("Instructions").width/2, buttons.menuInstructions.y+20);
+			ctx.strokeRect(buttons.menuCredits.x, buttons.menuCredits.y, buttons.menuCredits.w, buttons.menuCredits.h);
+			ctx.fillText("Credits", buttons.menuCredits.x+100-ctx.measureText("Credits").width/2, buttons.menuCredits.y+20);
+			ctx.strokeRect(buttons.menuQuit.x, buttons.menuQuit.y, buttons.menuQuit.w, buttons.menuQuit.h);
+			ctx.fillText("Quit", buttons.menuQuit.x+100-ctx.measureText("Quit").width/2, buttons.menuQuit.y+20);
+			
+			ctx.font = "36pt Arial, sans-serif";
+			ctx.fillText("Blackjack!", 537.5-ctx.measureText("Blackjack!").width/2, 75);
+			ctx.font = "24pt Arial, sans-serif";
+			
+			ctx.save();
+			ctx.translate(520, 338);
+			ctx.scale(2.5, 2.5);
+			ctx.rotate(-Math.PI/50);
+			ctx.drawImage(menuCards[0], -35, -43);
+			ctx.rotate(3*Math.PI/50);
+			ctx.drawImage(menuCards[1], -25, -41);
+			ctx.restore();
+		}
+		
+		//----------------------------------------------------------------------------PLAY----------------------------------------------------------------------------//
+		function updatePlayMenu(){
+			if((contains(buttons.playOnePlayer,mouse) && mouse.clicked)===true){
+				mouse.clicked=false;
+				playersNum=1;
+				initPlay();
+				changeState(PLAY);
+			}
+			
+			if((contains(buttons.playTwoPlayers,mouse) && mouse.clicked)===true){
+				mouse.clicked=false;
+				playersNum=2;
+				initPlay();
+				changeState(PLAY);
+			}
+			
+			if((contains(buttons.playThreePlayers,mouse) && mouse.clicked)===true){
+				mouse.clicked=false;
+				playersNum=3;
+				initPlay();
+				changeState(PLAY);
+			}
+			
+			if((contains(buttons.playFourPlayers,mouse) && mouse.clicked)===true){
+				mouse.clicked=false;
+				playersNum=4;
+				initPlay();
+				changeState(PLAY);
+			}
+			
+			if((contains(buttons.playMenu,mouse) && mouse.clicked)===true){
+				mouse.clicked=false;
+				changeState(MENU);
+			}
+			
+			if(mouse.clicked)
+				mouse.clicked=false;
+		}
+		function drawPlayMenu(){
+			ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+			
+			ctx.fillStyle = "#FFFFFF";
+			ctx.fillRect(buttons.playOnePlayer.x, buttons.playOnePlayer.y, buttons.playOnePlayer.w, buttons.playOnePlayer.h);
+			ctx.fillRect(buttons.playTwoPlayers.x, buttons.playTwoPlayers.y, buttons.playTwoPlayers.w, buttons.playTwoPlayers.h);
+			ctx.fillRect(buttons.playThreePlayers.x, buttons.playThreePlayers.y, buttons.playThreePlayers.w, buttons.playThreePlayers.h);
+			ctx.fillRect(buttons.playFourPlayers.x, buttons.playFourPlayers.y, buttons.playFourPlayers.w, buttons.playFourPlayers.h);
+			ctx.fillRect(buttons.playMenu.x, buttons.playMenu.y, buttons.playMenu.w, buttons.playMenu.h);
+			
+			if(contains(buttons.playOnePlayer,mouse)){
+				ctx.fillStyle = "#FFFFCC";
+				ctx.fillRect(buttons.playOnePlayer.x, buttons.playOnePlayer.y, buttons.playOnePlayer.w, buttons.playOnePlayer.h);
+			}
+			else if(contains(buttons.playTwoPlayers,mouse)){
+				ctx.fillStyle = "#FFFFCC";
+				ctx.fillRect(buttons.playTwoPlayers.x, buttons.playTwoPlayers.y, buttons.playTwoPlayers.w, buttons.playTwoPlayers.h);
+			}
+			else if(contains(buttons.playThreePlayers,mouse)){
+				ctx.fillStyle = "#FFFFCC";
+				ctx.fillRect(buttons.playThreePlayers.x, buttons.playThreePlayers.y, buttons.playThreePlayers.w, buttons.playThreePlayers.h);
+			}
+			else if(contains(buttons.playFourPlayers,mouse)){
+				ctx.fillStyle = "#FFFFCC";
+				ctx.fillRect(buttons.playFourPlayers.x, buttons.playFourPlayers.y, buttons.playFourPlayers.w, buttons.playFourPlayers.h);
+			}
+			else if(contains(buttons.playMenu,mouse)){
+				ctx.fillStyle = "#FFFFCC";
+				ctx.fillRect(buttons.playMenu.x, buttons.playMenu.y, buttons.playMenu.w, buttons.playMenu.h);
+			}
+			
+			ctx.fillStyle = "#000000";
+			ctx.strokeRect(buttons.playOnePlayer.x, buttons.playOnePlayer.y, buttons.playOnePlayer.w, buttons.playOnePlayer.h);
+			ctx.fillText("One Player", buttons.playOnePlayer.x+110-ctx.measureText("One Player").width/2, buttons.playOnePlayer.y+20);
+			ctx.strokeRect(buttons.playTwoPlayers.x, buttons.playTwoPlayers.y, buttons.playTwoPlayers.w, buttons.playTwoPlayers.h);
+			ctx.fillText("Two Players", buttons.playTwoPlayers.x+110-ctx.measureText("Two Players").width/2, buttons.playTwoPlayers.y+20);
+			ctx.strokeRect(buttons.playThreePlayers.x, buttons.playThreePlayers.y, buttons.playThreePlayers.w, buttons.playThreePlayers.h);
+			ctx.fillText("Three Players", buttons.playThreePlayers.x+110-ctx.measureText("Three Players").width/2, buttons.playThreePlayers.y+20);
+			ctx.strokeRect(buttons.playFourPlayers.x, buttons.playFourPlayers.y, buttons.playFourPlayers.w, buttons.playFourPlayers.h);
+			ctx.fillText("Four Players", buttons.playFourPlayers.x+110-ctx.measureText("Four Players").width/2, buttons.playFourPlayers.y+20);
+			
+			ctx.font = "12pt Arial, sans-serif";
+			ctx.strokeRect(buttons.playMenu.x, buttons.playMenu.y, buttons.playMenu.w, buttons.playMenu.h);
+			ctx.fillText("Back", buttons.playMenu.x+50-ctx.measureText("Back").width/2, buttons.playMenu.y+10.75);
+			ctx.font = "24pt Arial, sans-serif";
+		}
+		
+		//--------------------------------------------------------------------------PLAY--------------------------------------------------------------------------//
+		function updatePlay(){
+			if(setUp){
+				zoomScale=1;
+				if(!cardDrawn){
+					turn++;
+					if(turn==4)
+						turn=0;
+					cardsDrawn++;
+					if(cardsDrawn==0){
+						deal("up", turn);
+					}
+					else if(cardsDrawn==1){
+						deal("up", turn);
+					}
+					else if(cardsDrawn==2){
+						deal("up", turn);
+					}
+					else if(cardsDrawn==3){
+						deal("up", turn);
+					}
+					else if(cardsDrawn==4){
+						deal("down", turn);
+					}
+					else if(cardsDrawn==5){
+						deal("down", turn);
+					}
+					else if(cardsDrawn==6){
+						deal("down", turn);
+					}
+					else if(cardsDrawn==7){
+						deal("down", turn);
+					}
+					else
+						setUp=false;
+					cardDrawn=true;
+				}
+			}
+			else{
+				if(rotation%90==0 && zoomScale>=4){
+					if((turn==0)&&(!players[0].finished)){
+						players[0].cardCount=0;
+						var aceCount = 0;
+						for(var i=0; i<players[0].cards.length;i++){
+							players[0].cardCount+=players[0].cards[i].value;
+							if(players[0].cards[i].card=="Ace")
+								aceCount++;
+						}
+						
+						for(var i=0;i<aceCount;i++){
+							if(players[0].cardCount>21)
+								players[0].cardCount-=10;
+						}
+						
+						if(players[0].comp){
+							
+							if ((!waitShow)&&(!waitEnd)){
+								waitShow=true;
+								waitShowTime = setWait(1);
+							}
+							if(!waitEnd){
+								waitEndTime = setWait(2);
+								waitEnd=true;
+							}
+							
+							if(waitShow==true && waitShowTime<=Date.now()){
+								players[0].show=true;
+								if((players[0].stay)||(players[0].bust)){
+									turnDone=true;
+									turn++;
+									players[0].finished=true;
+								}
+								if(players[0].cardCount>21){
+									players[0].bust=true;
+								}else if(players[0].cardCount<=players[0].risk){
+									deal("down",turn);
+									players[0].stay=false;
+								}else{
+									players[0].stay=true;
+								}
+								waitShow=false;
+							}
+							
+							if(waitEnd==true && waitEndTime<=Date.now()){
+								waitEnd=false;
+								players[0].show=false;
+							}
+						}
+						else{
+							if(players[0].cardCount>21){
+								players[0].bust=true;
+							}
+							if((contains(buttons.playOneHit,mouse) && mouse.clicked && !players[0].bust)===true){
+								mouse.clicked=false;
+								deal("down",turn);
+								players[0].stay=false;
+								players[0].show=true;
+								waitShow=true;
+								waitShowTime = setWait(1);
+							}
+							
+							if((contains(buttons.playOneStay,mouse) && mouse.clicked && !players[0].bust)===true){
+								mouse.clicked=false;
+								players[0].stay=true;
+								players[0].show=true;
+								waitShow=true;
+								waitShowTime = setWait(1);
+							}
+							
+							if((contains(buttons.playOneShowCards,mouse) && mouse.clicked && players[0].seeCards==false && !players[0].bust)===true){
+								mouse.clicked=false;
+								players[0].seeCards=true;
+							}else if((contains(buttons.playOneShowCards,mouse) && mouse.clicked && players[0].seeCards==true && !players[0].bust)===true){
+								mouse.clicked=false;
+								players[0].seeCards=false;
+							}
+							
+							if(waitShow==true && waitShowTime<=Date.now()){
+								waitShow=false;
+								players[0].show=false;
+								if((players[0].stay)||(players[0].bust)){
+									turnDone=true;
+									turn++;
+									players[0].seeCards=false;
+									players[0].finished=true;
+								}
+							}
+						}
+					}
+					else if((turn==1)&&(!players[1].finished)){
+						players[1].cardCount=0;
+						var aceCount = 0;
+						for(var i=0; i<players[1].cards.length;i++){
+							players[1].cardCount+=players[1].cards[i].value;
+							if(players[1].cards[i].card=="Ace")
+								aceCount++;
+						}
+						
+						for(var i=0;i<aceCount;i++){
+							if(players[1].cardCount>21)
+								players[1].cardCount-=10;
+						}
+						
+						if(players[1].comp){
+							
+							if ((!waitShow)&&(!waitEnd)){
+								waitShow=true;
+								waitShowTime = setWait(1);
+							}
+							if(!waitEnd){
+								waitEndTime = setWait(2);
+								waitEnd=true;
+							}
+							
+							if(waitShow==true && waitShowTime<=Date.now()){
+								players[1].show=true;
+								if((players[1].stay)||(players[1].bust)){
+									turnDone=true;
+									turn++;
+									players[1].finished=true;
+								}
+								if(players[1].cardCount>21){
+									players[1].bust=true;
+								}else if(players[1].cardCount<=players[1].risk){
+									deal("down",turn);
+									players[1].stay=false;
+								}else{
+									players[1].stay=true;
+								}
+								waitShow=false;
+							}
+							
+							if(waitEnd==true && waitEndTime<=Date.now()){
+								waitEnd=false;
+								players[1].show=false;
+							}
+						}
+						else{
+							if(players[1].cardCount>21){
+								players[1].bust=true;
+							}
+							if((contains(buttons.playTwoHit,mouse) && mouse.clicked && !players[1].bust)===true){
+								mouse.clicked=false;
+								deal("down",turn);
+								players[1].stay=false;
+								players[1].show=true;
+								waitShow=true;
+								waitShowTime = setWait(1);
+							}
+							
+							if((contains(buttons.playTwoStay,mouse) && mouse.clicked && !players[1].bust)===true){
+								mouse.clicked=false;
+								players[1].stay=true;
+								players[1].show=true;
+								waitShow=true;
+								waitShowTime = setWait(1);
+							}
+							
+							if((contains(buttons.playTwoShowCards,mouse) && mouse.clicked && players[1].seeCards==false && !players[1].bust)===true){
+								mouse.clicked=false;
+								players[1].seeCards=true;
+							}else if((contains(buttons.playTwoShowCards,mouse) && mouse.clicked && players[1].seeCards==true && !players[1].bust)===true){
+								mouse.clicked=false;
+								players[1].seeCards=false;
+							}
+							
+							if(waitShow==true && waitShowTime<=Date.now()){
+								waitShow=false;
+								players[1].show=false;
+								if((players[1].stay)||(players[1].bust)){
+									turnDone=true;
+									turn++;
+									players[1].seeCards=false;
+									players[1].finished=true;
+								}
+							}
+						}
+					}
+					else if((turn==2)&&(!players[2].finished)){
+						players[2].cardCount=0;
+						var aceCount = 0;
+						for(var i=0; i<players[2].cards.length;i++){
+							players[2].cardCount+=players[2].cards[i].value;
+							if(players[2].cards[i].card=="Ace")
+								aceCount++;
+						}
+						
+						for(var i=0;i<aceCount;i++){
+							if(players[2].cardCount>21)
+								players[2].cardCount-=10;
+						}
+						
+						if(players[2].comp){
+							
+							if ((!waitShow)&&(!waitEnd)){
+								waitShow=true;
+								waitShowTime = setWait(1);
+							}
+							if(!waitEnd){
+								waitEndTime = setWait(2);
+								waitEnd=true;
+							}
+							
+							if(waitShow==true && waitShowTime<=Date.now()){
+								players[2].show=true;
+								if((players[2].stay)||(players[2].bust)){
+									turnDone=true;
+									turn++;
+									players[2].finished=true;
+								}
+								if(players[2].cardCount>21){
+									players[2].bust=true;
+								}else if(players[2].cardCount<=players[2].risk){
+									deal("down",turn);
+									players[2].stay=false;
+								}else{
+									players[2].stay=true;
+								}
+								waitShow=false;
+							}
+							
+							if(waitEnd==true && waitEndTime<=Date.now()){
+								waitEnd=false;
+								players[2].show=false;
+							}
+						}
+						else{
+							if(players[2].cardCount>21){
+								players[2].bust=true;
+							}
+							if((contains(buttons.playThreeHit,mouse) && mouse.clicked && !players[2].bust)===true){
+								mouse.clicked=false;
+								deal("down",turn);
+								players[2].stay=false;
+								players[2].show=true;
+								waitShow=true;
+								waitShowTime = setWait(1);
+							}
+							
+							if((contains(buttons.playThreeStay,mouse) && mouse.clicked && !players[2].bust)===true){
+								mouse.clicked=false;
+								players[2].stay=true;
+								players[2].show=true;
+								waitShow=true;
+								waitShowTime = setWait(1);
+							}
+							
+							if((contains(buttons.playThreeShowCards,mouse) && mouse.clicked && players[2].seeCards==false && !players[2].bust)===true){
+								mouse.clicked=false;
+								players[2].seeCards=true;
+							}else if((contains(buttons.playThreeShowCards,mouse) && mouse.clicked && players[2].seeCards==true && !players[2].bust)===true){
+								mouse.clicked=false;
+								players[2].seeCards=false;
+							}
+							
+							if(waitShow==true && waitShowTime<=Date.now()){
+								waitShow=false;
+								players[2].show=false;
+								if((players[2].stay)||(players[2].bust)){
+									turnDone=true;
+									turn++;
+									players[2].seeCards=false;
+									players[2].finished=true;
+								}
+							}
+						}
+					}
+					else if((turn==3)&&(!players[3].finished)){
+						players[3].cardCount=0;
+						var aceCount = 0;
+						for(var i=0; i<players[3].cards.length;i++){
+							players[3].cardCount+=players[3].cards[i].value;
+							if(players[3].cards[i].card=="Ace")
+								aceCount++;
+						}
+						
+						for(var i=0;i<aceCount;i++){
+							if(players[3].cardCount>21)
+								players[3].cardCount-=10;
+						}
+						
+						if(players[3].comp){
+							
+							if ((!waitShow)&&(!waitEnd)){
+								waitShow=true;
+								waitShowTime = setWait(1);
+							}
+							if(!waitEnd){
+								waitEndTime = setWait(2);
+								waitEnd=true;
+							}
+							
+							if(waitShow==true && waitShowTime<=Date.now()){
+								players[3].show=true;
+								if((players[3].stay)||(players[3].bust)){
+									turnDone=true;
+									turn++;
+									players[3].finished=true;
+								}
+								if(players[3].cardCount>21){
+									players[3].bust=true;
+								}else if(players[3].cardCount<=players[3].risk){
+									deal("down",turn);
+									players[3].stay=false;
+								}else{
+									players[3].stay=true;
+								}
+								waitShow=false;
+							}
+							
+							if(waitEnd==true && waitEndTime<=Date.now()){
+								waitEnd=false;
+								players[3].show=false;
+							}
+						}
+						else{
+							if(players[3].cardCount>21){
+								players[3].bust=true;
+							}
+							if((contains(buttons.playFourHit,mouse) && mouse.clicked && !players[3].bust)===true){
+								mouse.clicked=false;
+								deal("down",turn);
+								players[3].stay=false;
+								players[3].show=true;
+								waitShow=true;
+								waitShowTime = setWait(1);
+							}
+							
+							if((contains(buttons.playFourStay,mouse) && mouse.clicked && !players[3].bust)===true){
+								mouse.clicked=false;
+								players[3].stay=true;
+								players[3].show=true;
+								waitShow=true;
+								waitShowTime = setWait(1);
+							}
+							
+							if((contains(buttons.playFourShowCards,mouse) && mouse.clicked && players[3].seeCards==false && !players[3].bust)===true){
+								mouse.clicked=false;
+								players[3].seeCards=true;
+							}else if((contains(buttons.playFourShowCards,mouse) && mouse.clicked && players[3].seeCards==true && !players[3].bust)===true){
+								mouse.clicked=false;
+								players[3].seeCards=false;
+							}
+							
+							if(waitShow==true && waitShowTime<=Date.now()){
+								waitShow=false;
+								players[3].show=false;
+								if((players[3].stay)||(players[3].bust)){
+									turnDone=true;
+									turn++;
+									players[3].seeCards=false;
+									players[3].finished=true;
+								}
+							}
+						}
+					}
+					if(turn>3)
+						turn=0;
+				}
+				
+				if(rotation%90!=0)
+					rotation-=(30/60);
+				else if(turnDone)
+					rotation-=(30/60);
+				
+				if(turnDone){
+					zoom = true;
+					turnDone = false;
+				}
+				if(zoom){
+					zoomScale-=.033;
+					if(zoomScale<=1)
+						zoom=false;
+				}
+				else if (!zoom){
+					if(zoomScale<4){
+						zoomScale+=.033;
+					}
+				}
+				if((players[0].finished)&&(players[1].finished)&&(players[2].finished)&&(players[3].finished))
+					changeState(GAMEOVER);
+			}
+			
+			if((contains(buttons.playMenu,mouse) && mouse.clicked)===true){
+				mouse.clicked=false;
+				changeState(PLAYMENU);
+			}
+			
+			if(mouse.clicked)
+				mouse.clicked=false;
+		}
+		
+		function drawPlay(){
+			ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+			
+			ctx.translate(ctx.canvas.width/2, 540);
+			ctx.scale(zoomScale,zoomScale);
+			ctx.translate(-ctx.canvas.width/2, -540);
+			
+			//---------------------------------------------------------
+			ctx.translate(ctx.canvas.width/2, ctx.canvas.height/2);  //
+			ctx.rotate(rotation*Math.PI/180);                        //
+			ctx.translate(-ctx.canvas.width/2, -ctx.canvas.height/2);//
+			//---------------------------------------------------------
+			
+			ctx.save();
+			ctx.translate(players[0].baseX, players[0].baseY);
+			ctx.rotate(Math.PI);
+			{
+				
+				
+				ctx.scale(cardScale,cardScale);
+				ctx.drawImage(cardBack, -7*(1/cardScale), -120*(1/cardScale));
+				
+				if(cardDrawn){
+					moveCard(turn);
+				}
+				if(setUp){
+					for(var i=0; i<players[0].cards.length; i++){
+						if(players[0].cards[i].faceUp)
+							ctx.drawImage(players[0].cards[i].faceUpImg, players[0].cards[i].x*(1/cardScale), players[0].cards[i].y*(1/cardScale));
+						else
+							ctx.drawImage(players[0].cards[i].faceDownImg, players[0].cards[i].x*(1/cardScale), players[0].cards[i].y*(1/cardScale));
+					}
+					for(var i=0; i<players[1].cards.length; i++){
+						if(players[1].cards[i].faceUp)
+							ctx.drawImage(players[1].cards[i].faceUpImg, players[1].cards[i].x*(1/cardScale), players[1].cards[i].y*(1/cardScale));
+						else
+							ctx.drawImage(players[1].cards[i].faceDownImg, players[1].cards[i].x*(1/cardScale), players[1].cards[i].y*(1/cardScale));
+					}
+					for(var i=0; i<players[2].cards.length; i++){
+						if(players[2].cards[i].faceUp)
+							ctx.drawImage(players[2].cards[i].faceUpImg, players[2].cards[i].x*(1/cardScale), players[2].cards[i].y*(1/cardScale));
+						else
+							ctx.drawImage(players[2].cards[i].faceDownImg, players[2].cards[i].x*(1/cardScale), players[2].cards[i].y*(1/cardScale));
+					}
+					for(var i=0; i<players[3].cards.length; i++){
+						if(players[3].cards[i].faceUp)
+							ctx.drawImage(players[3].cards[i].faceUpImg, players[3].cards[i].x*(1/cardScale), players[3].cards[i].y*(1/cardScale));
+						else
+							ctx.drawImage(players[3].cards[i].faceDownImg, players[3].cards[i].x*(1/cardScale), players[3].cards[i].y*(1/cardScale));
+					}
+				}
+			}
+			ctx.restore();
+			
+			ctx.strokeRect(200,100,400,400);
+			
+			//---------------------------------------------------------------------------
+			ctx.save();
+			ctx.translate(players[0].baseX, players[0].baseY);
+			ctx.rotate(Math.PI);
+			{
+				ctx.fillText("Dealer", -ctx.measureText("Dealer").width/2, 16);
+				if(!setUp){
+					ctx.scale(cardScale,cardScale);
+					var position = -30;
+					for(var i=0; i<players[0].cards.length; i++){
+						if(players[0].cards[i].faceUp){
+							players[0].cards[i].x = position;
+							ctx.drawImage(players[0].cards[i].faceUpImg, players[0].cards[i].x*(1/cardScale), players[0].cards[i].y*(1/cardScale));
+						}
+						else if(players[0].bust||players[0].seeCards){
+							players[0].cards[i].x = position+30;
+							ctx.drawImage(players[0].cards[i].faceUpImg, players[0].cards[i].x*(1/cardScale), players[0].cards[i].y*(1/cardScale));
+						}else{
+							players[0].cards[i].x = position+30;
+							ctx.drawImage(players[0].cards[i].faceDownImg, players[0].cards[i].x*(1/cardScale), players[0].cards[i].y*(1/cardScale));
+						}
+						if(!players[0].comp){
+							players[0].cards[i].y = -60;
+							compCheck=20;
+						}else{
+							players[0].cards[i].y = -50;
+							compCheck=0;
+						}
+						position+=3;
+					}
+					if(players[0].show && turn==0){
+						if(players[0].bust)
+							ctx.fillText("Dealer busts!", -ctx.measureText("Dealer busts!").width/2, -300-compCheck);
+						else if(players[0].stay)
+							ctx.fillText("Dealer stays!", -ctx.measureText("Dealer stays!").width/2, -300-compCheck);
+						else
+							ctx.fillText("Dealer hits!", -ctx.measureText("Dealer hits!").width/2, -300-compCheck);
+					}
+				}
+			}
+			ctx.restore();
+			
+			//---------------------------------------------------------------------------
+			ctx.save();
+			ctx.translate(players[1].baseX, players[1].baseY);
+			ctx.rotate(-Math.PI/2);
+			{
+				ctx.fillText("Player 2", -ctx.measureText("Player 2").width/2, 16);
+				if(!setUp){
+					ctx.scale(cardScale,cardScale);
+					var position = -30;
+					for(var i=0; i<players[1].cards.length; i++){
+						if(players[1].cards[i].faceUp){
+							players[1].cards[i].x = position;
+							ctx.drawImage(players[1].cards[i].faceUpImg, players[1].cards[i].x*(1/cardScale), players[1].cards[i].y*(1/cardScale));
+						}
+						else if(players[1].bust||players[1].seeCards){
+							players[1].cards[i].x = position+30;
+							ctx.drawImage(players[1].cards[i].faceUpImg, players[1].cards[i].x*(1/cardScale), players[1].cards[i].y*(1/cardScale));
+						}else{
+							players[1].cards[i].x = position+30;
+							ctx.drawImage(players[1].cards[i].faceDownImg, players[1].cards[i].x*(1/cardScale), players[1].cards[i].y*(1/cardScale));
+						}
+						if(!players[1].comp){
+							players[1].cards[i].y = -60;
+							compCheck=20;
+						}else{
+							players[1].cards[i].y = -50;
+							compCheck=0;
+						}
+						position+=3;
+					}
+					if(players[1].show && turn==1){
+						if(players[1].bust)
+							ctx.fillText("Player 2 busts!", -ctx.measureText("Player 2 busts!").width/2, -300-compCheck);
+						else if(players[1].stay)
+							ctx.fillText("Player 2 stays!", -ctx.measureText("Player 2 stays!").width/2, -300-compCheck);
+						else
+							ctx.fillText("Player 2 hits!", -ctx.measureText("Player 2 hits!").width/2, -300-compCheck);
+					}
+				}
+			}
+			ctx.restore();
+			
+			//---------------------------------------------------------------------------
+			ctx.save();
+			ctx.translate(players[2].baseX, players[2].baseY);
+			{
+				ctx.fillText("Player 3", -ctx.measureText("Player 3").width/2, 16);
+				if(!setUp){
+					ctx.scale(cardScale,cardScale);
+					var position = -30;
+					for(var i=0; i<players[2].cards.length; i++){
+						if(players[2].cards[i].faceUp){
+							players[2].cards[i].x = position;
+							ctx.drawImage(players[2].cards[i].faceUpImg, players[2].cards[i].x*(1/cardScale), players[2].cards[i].y*(1/cardScale));
+						}
+						else if(players[2].bust||players[2].seeCards){
+							players[2].cards[i].x = position+30;
+							ctx.drawImage(players[2].cards[i].faceUpImg, players[2].cards[i].x*(1/cardScale), players[2].cards[i].y*(1/cardScale));
+						}else{
+							players[2].cards[i].x = position+30;
+							ctx.drawImage(players[2].cards[i].faceDownImg, players[2].cards[i].x*(1/cardScale), players[2].cards[i].y*(1/cardScale));
+						}
+						if(!players[2].comp){
+							players[2].cards[i].y = -60;
+							compCheck=20;
+						}else{
+							players[2].cards[i].y = -50;
+							compCheck=0;
+						}
+						position+=3;
+					}
+					if(players[2].show && turn==2){
+						if(players[2].bust)
+							ctx.fillText("Player 3 busts!", -ctx.measureText("Player 3 busts!").width/2, -300-compCheck);
+						else if(players[2].stay)
+							ctx.fillText("Player 3 stays!", -ctx.measureText("Player 3 stays!").width/2, -300-compCheck);
+						else
+							ctx.fillText("Player 3 hits!", -ctx.measureText("Player 3 hits!").width/2, -300-compCheck);
+					}
+				}
+			}
+			ctx.restore();
+			
+			//---------------------------------------------------------------------------
+			ctx.save();
+			ctx.translate(players[3].baseX, players[3].baseY);
+			ctx.rotate(Math.PI/2);
+			{
+				ctx.fillText("Player 4", -ctx.measureText("Player 4").width/2, 16);
+				if(!setUp){
+					ctx.scale(cardScale,cardScale);
+					var position = -30;
+					for(var i=0; i<players[3].cards.length; i++){
+						if(players[3].cards[i].faceUp){
+							players[3].cards[i].x = position;
+							ctx.drawImage(players[3].cards[i].faceUpImg, players[3].cards[i].x*(1/cardScale), players[3].cards[i].y*(1/cardScale));
+						}
+						else if(players[3].bust||players[3].seeCards){
+							players[3].cards[i].x = position+30;
+							ctx.drawImage(players[3].cards[i].faceUpImg, players[3].cards[i].x*(1/cardScale), players[3].cards[i].y*(1/cardScale));
+						}else{
+							players[3].cards[i].x = position+30;
+							ctx.drawImage(players[3].cards[i].faceDownImg, players[3].cards[i].x*(1/cardScale), players[3].cards[i].y*(1/cardScale));
+						}
+						if(!players[3].comp){
+							players[3].cards[i].y = -60;
+							compCheck=20;
+						}else{
+							players[3].cards[i].y = -50;
+							compCheck=0;
+						}
+						position+=3;
+					}
+					if(players[3].show && turn==3){
+						if(players[3].bust)
+							ctx.fillText("Player 4 busts!", -ctx.measureText("Player 4 busts!").width/2, -300-compCheck);
+						else if(players[3].stay)
+							ctx.fillText("Player 4 stays!", -ctx.measureText("Player 4 stays!").width/2, -300-compCheck);
+						else
+							ctx.fillText("Player 4 hits!", -ctx.measureText("Player 4 hits!").width/2, -300-compCheck);
+					}
+				}
+			}
+			ctx.restore();
+			
+			//---------------------------------------------------------
+			ctx.translate(ctx.canvas.width/2, ctx.canvas.height/2);  //
+			ctx.rotate(-rotation*Math.PI/180);                       //
+			ctx.translate(-ctx.canvas.width/2, -ctx.canvas.height/2);//
+			//---------------------------------------------------------
+			
+			ctx.translate(ctx.canvas.width/2, 540);
+			ctx.scale(1/zoomScale,1/zoomScale);
+			ctx.translate(-ctx.canvas.width/2, -540);
+			
+			ctx.fillStyle = "#FFFFFF";
+			ctx.fillRect(buttons.playMenu.x, buttons.playMenu.y, buttons.playMenu.w, buttons.playMenu.h);
+			
+			if(contains(buttons.playMenu,mouse)){
+				ctx.fillStyle = "#FFFFCC";
+				ctx.fillRect(buttons.playMenu.x, buttons.playMenu.y, buttons.playMenu.w, buttons.playMenu.h);
+			}
+			
+			ctx.fillStyle = "#000000";
+			ctx.font = "12pt Arial, sans-serif";
+			ctx.strokeRect(buttons.playMenu.x, buttons.playMenu.y, buttons.playMenu.w, buttons.playMenu.h);
+			ctx.fillText("Back", buttons.playMenu.x+50-ctx.measureText("Back").width/2, buttons.playMenu.y+10.75);
+			
+			if((!setUp)&&(rotation%90==0)&&(zoomScale>=4)){
+				if((turn==0)&&(!players[0].bust)&&(!players[0].comp)){
+					ctx.fillStyle = "#FFFFFF";
+					ctx.fillRect(buttons.playOneHit.x, buttons.playOneHit.y, buttons.playOneHit.w, buttons.playOneHit.h);
+					ctx.fillRect(buttons.playOneStay.x, buttons.playOneStay.y, buttons.playOneStay.w, buttons.playOneStay.h);
+					ctx.fillRect(buttons.playOneShowCards.x, buttons.playOneShowCards.y, buttons.playOneShowCards.w, buttons.playOneShowCards.h);
+					
+					if(contains(buttons.playOneHit,mouse)){
+						ctx.fillStyle = "#FFFFCC";
+						ctx.fillRect(buttons.playOneHit.x, buttons.playOneHit.y, buttons.playOneHit.w, buttons.playOneHit.h);
+					}
+					if(contains(buttons.playOneStay,mouse)){
+						ctx.fillStyle = "#FFFFCC";
+						ctx.fillRect(buttons.playOneStay.x, buttons.playOneStay.y, buttons.playOneStay.w, buttons.playOneStay.h);
+					}
+					if(players[0].seeCards){
+						ctx.fillStyle = "#66FF66";
+						ctx.fillRect(buttons.playOneShowCards.x, buttons.playOneShowCards.y, buttons.playOneShowCards.w, buttons.playOneShowCards.h);
+					}else if(contains(buttons.playOneShowCards,mouse)){
+						ctx.fillStyle = "#FFFFCC";
+						ctx.fillRect(buttons.playOneShowCards.x, buttons.playOneShowCards.y, buttons.playOneShowCards.w, buttons.playOneShowCards.h);
+					}
+					
+					ctx.fillStyle = "#000000";
+					ctx.strokeRect(buttons.playOneHit.x, buttons.playOneHit.y, buttons.playOneHit.w, buttons.playOneHit.h);
+					ctx.fillText("Hit", buttons.playOneHit.x+50-ctx.measureText("Hit").width/2, buttons.playOneHit.y+10.75);
+					ctx.strokeRect(buttons.playOneStay.x, buttons.playOneStay.y, buttons.playOneStay.w, buttons.playOneStay.h);
+					ctx.fillText("Stay", buttons.playOneStay.x+50-ctx.measureText("Stay").width/2, buttons.playOneStay.y+10.75);
+					ctx.strokeRect(buttons.playOneShowCards.x, buttons.playOneShowCards.y, buttons.playOneShowCards.w, buttons.playOneShowCards.h);
+					ctx.fillText("See Cards", buttons.playOneShowCards.x+50-ctx.measureText("See Cards").width/2, buttons.playOneShowCards.y+10.75);
+				}
+				else if((turn==1)&&(!players[1].bust)&&(!players[1].comp)){
+					ctx.fillStyle = "#FFFFFF";
+					ctx.fillRect(buttons.playTwoHit.x, buttons.playTwoHit.y, buttons.playTwoHit.w, buttons.playTwoHit.h);
+					ctx.fillRect(buttons.playTwoStay.x, buttons.playTwoStay.y, buttons.playTwoStay.w, buttons.playTwoStay.h);
+					ctx.fillRect(buttons.playTwoShowCards.x, buttons.playTwoShowCards.y, buttons.playTwoShowCards.w, buttons.playTwoShowCards.h);
+					
+					if(contains(buttons.playTwoHit,mouse)){
+						ctx.fillStyle = "#FFFFCC";
+						ctx.fillRect(buttons.playTwoHit.x, buttons.playTwoHit.y, buttons.playTwoHit.w, buttons.playTwoHit.h);
+					}
+					if(contains(buttons.playTwoStay,mouse)){
+						ctx.fillStyle = "#FFFFCC";
+						ctx.fillRect(buttons.playTwoStay.x, buttons.playTwoStay.y, buttons.playTwoStay.w, buttons.playTwoStay.h);
+					}
+					if(players[1].seeCards){
+						ctx.fillStyle = "#66FF66";
+						ctx.fillRect(buttons.playTwoShowCards.x, buttons.playTwoShowCards.y, buttons.playTwoShowCards.w, buttons.playTwoShowCards.h);
+					}else if(contains(buttons.playTwoShowCards,mouse)){
+						ctx.fillStyle = "#FFFFCC";
+						ctx.fillRect(buttons.playTwoShowCards.x, buttons.playTwoShowCards.y, buttons.playTwoShowCards.w, buttons.playTwoShowCards.h);
+					}
+					
+					ctx.fillStyle = "#000000";
+					ctx.strokeRect(buttons.playTwoHit.x, buttons.playTwoHit.y, buttons.playTwoHit.w, buttons.playTwoHit.h);
+					ctx.fillText("Hit", buttons.playTwoHit.x+50-ctx.measureText("Hit").width/2, buttons.playTwoHit.y+10.75);
+					ctx.strokeRect(buttons.playTwoStay.x, buttons.playTwoStay.y, buttons.playTwoStay.w, buttons.playTwoStay.h);
+					ctx.fillText("Stay", buttons.playTwoStay.x+50-ctx.measureText("Stay").width/2, buttons.playTwoStay.y+10.75);
+					ctx.strokeRect(buttons.playTwoShowCards.x, buttons.playTwoShowCards.y, buttons.playTwoShowCards.w, buttons.playTwoShowCards.h);
+					ctx.fillText("See Cards", buttons.playTwoShowCards.x+50-ctx.measureText("See Cards").width/2, buttons.playTwoShowCards.y+10.75);
+				}
+				else if((turn==2)&&(!players[2].bust)&&(!players[2].comp)){
+					ctx.fillStyle = "#FFFFFF";
+					ctx.fillRect(buttons.playThreeHit.x, buttons.playThreeHit.y, buttons.playThreeHit.w, buttons.playThreeHit.h);
+					ctx.fillRect(buttons.playThreeStay.x, buttons.playThreeStay.y, buttons.playThreeStay.w, buttons.playThreeStay.h);
+					ctx.fillRect(buttons.playThreeShowCards.x, buttons.playThreeShowCards.y, buttons.playThreeShowCards.w, buttons.playThreeShowCards.h);
+					
+					if(contains(buttons.playThreeHit,mouse)){
+						ctx.fillStyle = "#FFFFCC";
+						ctx.fillRect(buttons.playThreeHit.x, buttons.playThreeHit.y, buttons.playThreeHit.w, buttons.playThreeHit.h);
+					}
+					if(contains(buttons.playThreeStay,mouse)){
+						ctx.fillStyle = "#FFFFCC";
+						ctx.fillRect(buttons.playThreeStay.x, buttons.playThreeStay.y, buttons.playThreeStay.w, buttons.playThreeStay.h);
+					}
+					if(players[2].seeCards){
+						ctx.fillStyle = "#66FF66";
+						ctx.fillRect(buttons.playThreeShowCards.x, buttons.playThreeShowCards.y, buttons.playThreeShowCards.w, buttons.playThreeShowCards.h);
+					}else if(contains(buttons.playThreeShowCards,mouse)){
+						ctx.fillStyle = "#FFFFCC";
+						ctx.fillRect(buttons.playThreeShowCards.x, buttons.playThreeShowCards.y, buttons.playThreeShowCards.w, buttons.playThreeShowCards.h);
+					}
+					
+					ctx.fillStyle = "#000000";
+					ctx.strokeRect(buttons.playThreeHit.x, buttons.playThreeHit.y, buttons.playThreeHit.w, buttons.playThreeHit.h);
+					ctx.fillText("Hit", buttons.playThreeHit.x+50-ctx.measureText("Hit").width/2, buttons.playThreeHit.y+10.75);
+					ctx.strokeRect(buttons.playThreeStay.x, buttons.playThreeStay.y, buttons.playThreeStay.w, buttons.playThreeStay.h);
+					ctx.fillText("Stay", buttons.playThreeStay.x+50-ctx.measureText("Stay").width/2, buttons.playThreeStay.y+10.75);
+					ctx.strokeRect(buttons.playThreeShowCards.x, buttons.playThreeShowCards.y, buttons.playThreeShowCards.w, buttons.playThreeShowCards.h);
+					ctx.fillText("See Cards", buttons.playThreeShowCards.x+50-ctx.measureText("See Cards").width/2, buttons.playThreeShowCards.y+10.75);
+				}
+				else if((turn==3)&&(!players[3].bust)&&(!players[3].comp)){
+					ctx.fillStyle = "#FFFFFF";
+					ctx.fillRect(buttons.playFourHit.x, buttons.playFourHit.y, buttons.playFourHit.w, buttons.playFourHit.h);
+					ctx.fillRect(buttons.playFourStay.x, buttons.playFourStay.y, buttons.playFourStay.w, buttons.playFourStay.h);
+					ctx.fillRect(buttons.playFourShowCards.x, buttons.playFourShowCards.y, buttons.playFourShowCards.w, buttons.playFourShowCards.h);
+					
+					if(contains(buttons.playFourHit,mouse)){
+						ctx.fillStyle = "#FFFFCC";
+						ctx.fillRect(buttons.playFourHit.x, buttons.playFourHit.y, buttons.playFourHit.w, buttons.playFourHit.h);
+					}
+					if(contains(buttons.playFourStay,mouse)){
+						ctx.fillStyle = "#FFFFCC";
+						ctx.fillRect(buttons.playFourStay.x, buttons.playFourStay.y, buttons.playFourStay.w, buttons.playFourStay.h);
+					}
+					if(players[3].seeCards){
+						ctx.fillStyle = "#66FF66";
+						ctx.fillRect(buttons.playFourShowCards.x, buttons.playFourShowCards.y, buttons.playFourShowCards.w, buttons.playFourShowCards.h);
+					}else if(contains(buttons.playFourShowCards,mouse)){
+						ctx.fillStyle = "#FFFFCC";
+						ctx.fillRect(buttons.playFourShowCards.x, buttons.playFourShowCards.y, buttons.playFourShowCards.w, buttons.playFourShowCards.h);
+					}
+					
+					ctx.fillStyle = "#000000";
+					ctx.strokeRect(buttons.playFourHit.x, buttons.playFourHit.y, buttons.playFourHit.w, buttons.playFourHit.h);
+					ctx.fillText("Hit", buttons.playFourHit.x+50-ctx.measureText("Hit").width/2, buttons.playFourHit.y+10.75);
+					ctx.strokeRect(buttons.playFourStay.x, buttons.playFourStay.y, buttons.playFourStay.w, buttons.playFourStay.h);
+					ctx.fillText("Stay", buttons.playFourStay.x+50-ctx.measureText("Stay").width/2, buttons.playFourStay.y+10.75);
+					ctx.strokeRect(buttons.playFourShowCards.x, buttons.playFourShowCards.y, buttons.playFourShowCards.w, buttons.playFourShowCards.h);
+					ctx.fillText("See Cards", buttons.playFourShowCards.x+50-ctx.measureText("See Cards").width/2, buttons.playFourShowCards.y+10.75);
+				}
+			}
+			ctx.font = "24pt Arial, sans-serif";
+		}
+		
+		//------------------------------------------------------------------------GAMEOVER------------------------------------------------------------------------//
+		function updateGameOver(){
+			var score = 0;
+			if((!players[0].bust)&&(players[0].cardCount>score)){
+				score=players[0].cardCount;
+			}
+			if((!players[1].bust)&&(players[1].cardCount>score)){
+				score=players[1].cardCount;
+			}
+			if((!players[2].bust)&&(players[2].cardCount>score)){
+				score=players[2].cardCount;
+			}
+			if((!players[3].bust)&&(players[3].cardCount>score)){
+				score=players[3].cardCount;
+			}
+			
+			if(!winCheck){
+				if(players[0].cardCount==score){
+					winners.push(players[0].name);
+					winCheck=true;
+				}
+				if(players[1].cardCount==score){
+					winners.push(players[1].name);
+					winCheck=true;
+				}
+				if(players[2].cardCount==score){
+					winners.push(players[2].name);
+					winCheck=true;
+				}
+				if(players[3].cardCount==score){
+					winners.push(players[3].name);
+					winCheck=true;
+				}
+			}
+			
+			if((contains(buttons.gameOverMenu,mouse) && mouse.clicked)===true){
+				mouse.clicked=false;
+				changeState(MENU);
+			}
+			
+			if((contains(buttons.gameOverReplay,mouse) && mouse.clicked)===true){
+				mouse.clicked=false;
+				changeState(PLAYMENU);
+			}
+			
+			if(mouse.clicked)
+				mouse.clicked=false;
+		}
+		function drawGameOver(){
+			ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+			
+			if(winners.length>1){
+				var winnerString = "";
+				for(var i=0; i<winners.length; i++){
+					if(i<winners.length-1)
+						winnerString+= winners[i]+", ";
+					else if(i=winners.length-1)
+						winnerString+= "and "+winners[i];
+					else
+						winnerString+= winners[i];
+				}
+				ctx.fillText("It's a tie! Winners are "+winnerString, ctx.canvas.width/2-ctx.measureText("It's a tie! Winners are "+winnerString).width/2, 371);
+			}
+			else if(winners.length==1)
+				ctx.fillText(winners[0]+" wins!", ctx.canvas.width/2-ctx.measureText(winners[0]+" wins!").width/2, 390);
+			else
+				ctx.fillText("All busts. Nobody wins!", ctx.canvas.width/2-ctx.measureText("All busts. Nobody wins!").width/2, 390);
+			
+			ctx.fillText("GAME OVER", ctx.canvas.width/2-ctx.measureText("GAME OVER").width/2, 70);
+			if(players[0].bust)
+				ctx.fillText(players[0].name+" busted with "+ players[0].cardCount, ctx.canvas.width/2-ctx.measureText(players[0].name+" busted with "+ players[0].cardCount).width/2, 150);
+			else
+				ctx.fillText(players[0].name+" stayed with "+ players[0].cardCount, ctx.canvas.width/2-ctx.measureText(players[0].name+" stayed with "+ players[0].cardCount).width/2, 150);
+			if(players[1].bust)
+				ctx.fillText(players[1].name+" busted with "+ players[1].cardCount, ctx.canvas.width/2-ctx.measureText(players[1].name+" busted with "+ players[1].cardCount).width/2, 200);
+			else
+				ctx.fillText(players[1].name+" stayed with "+ players[1].cardCount, ctx.canvas.width/2-ctx.measureText(players[1].name+" stayed with "+ players[1].cardCount).width/2, 200);
+			if(players[2].bust)
+				ctx.fillText(players[2].name+" busted with "+ players[2].cardCount, ctx.canvas.width/2-ctx.measureText(players[2].name+" busted with "+ players[2].cardCount).width/2, 250);
+			else
+				ctx.fillText(players[2].name+" stayed with "+ players[2].cardCount, ctx.canvas.width/2-ctx.measureText(players[2].name+" stayed with "+ players[2].cardCount).width/2, 250);
+			if(players[3].bust)
+				ctx.fillText(players[3].name+" busted with "+ players[3].cardCount, ctx.canvas.width/2-ctx.measureText(players[3].name+" busted with "+ players[3].cardCount).width/2, 300);
+			else
+				ctx.fillText(players[3].name+" stayed with "+ players[3].cardCount, ctx.canvas.width/2-ctx.measureText(players[3].name+" stayed with "+ players[3].cardCount).width/2, 300);
+			
+			ctx.fillStyle = "#FFFFFF";
+			ctx.fillRect(buttons.gameOverMenu.x, buttons.gameOverMenu.y, buttons.gameOverMenu.w, buttons.gameOverMenu.h);
+			ctx.fillRect(buttons.gameOverReplay.x, buttons.gameOverReplay.y, buttons.gameOverReplay.w, buttons.gameOverReplay.h);
+			
+			if(contains(buttons.gameOverMenu,mouse)){
+				ctx.fillStyle = "#FFFFCC";
+				ctx.fillRect(buttons.gameOverMenu.x, buttons.gameOverMenu.y, buttons.gameOverMenu.w, buttons.gameOverMenu.h);
+			}
+			else if(contains(buttons.gameOverReplay,mouse)){
+				ctx.fillStyle = "#FFFFCC";
+				ctx.fillRect(buttons.gameOverReplay.x, buttons.gameOverReplay.y, buttons.gameOverReplay.w, buttons.gameOverReplay.h);
+			}
+			
+			ctx.fillStyle = "#000000";
+			ctx.strokeRect(buttons.gameOverMenu.x, buttons.gameOverMenu.y, buttons.gameOverMenu.w, buttons.gameOverMenu.h);
+			ctx.fillText("Menu", buttons.gameOverMenu.x+100-ctx.measureText("Menu").width/2, buttons.gameOverMenu.y+20);
+			ctx.strokeRect(buttons.gameOverReplay.x, buttons.gameOverReplay.y, buttons.gameOverReplay.w, buttons.gameOverReplay.h);
+			ctx.fillText("Play Agian", buttons.gameOverReplay.x+100-ctx.measureText("Play Agian").width/2, buttons.gameOverReplay.y+20);
+			
+		}
+		
+		//------------------------------------------------------------------------INSTRUCTIONS------------------------------------------------------------------------//
+		function updateInstructions(){
+			if((contains(buttons.instructionsMenu,mouse) && mouse.clicked)===true){
+				mouse.clicked=false;
+				changeState(MENU);
+			}
+			
+			if(mouse.clicked)
+				mouse.clicked=false;
+		}
+		function drawInstructions(){
+			ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+			
+			ctx.fillText("Instructions", ctx.canvas.width/2-ctx.measureText("Instructions").width/2, 100);
+			ctx.fillText("The goal is to get as close to 21", ctx.canvas.width/2-ctx.measureText("The goal is to get as close to 21").width/2, 200);
+			ctx.fillText("as possible without going over.", ctx.canvas.width/2-ctx.measureText("as possible without going over.").width/2, 250);
+			ctx.fillText("Aces may count as 1 or 11.", ctx.canvas.width/2-ctx.measureText("Aces may count as 1 or 11.").width/2, 300);
+			ctx.fillText("Face cards are worth 10.", ctx.canvas.width/2-ctx.measureText("Face cards are worth 10.").width/2, 350);
+			ctx.fillText("On your turn you may \"Hit\" (take another card)", ctx.canvas.width/2-ctx.measureText("On your turn you may \"Hit\" (take another card)").width/2, 400);
+			ctx.fillText("or \"Stay\" (end your turn).", ctx.canvas.width/2-ctx.measureText("or \"Stay\" (end your turn).").width/2, 450);
+			
+			ctx.fillStyle = "#FFFFFF";
+			ctx.fillRect(buttons.instructionsMenu.x, buttons.instructionsMenu.y, buttons.instructionsMenu.w, buttons.instructionsMenu.h);
+			
+			if(contains(buttons.instructionsMenu,mouse)){
+				ctx.fillStyle = "#FFFFCC";
+				ctx.fillRect(buttons.instructionsMenu.x, buttons.instructionsMenu.y, buttons.instructionsMenu.w, buttons.instructionsMenu.h);
+			}
+			
+			ctx.fillStyle = "#000000";
+			ctx.strokeRect(buttons.instructionsMenu.x, buttons.instructionsMenu.y, buttons.instructionsMenu.w, buttons.instructionsMenu.h);
+			ctx.font = "12pt Arial, sans-serif";
+			ctx.strokeRect(buttons.instructionsMenu.x, buttons.instructionsMenu.y, buttons.instructionsMenu.w, buttons.instructionsMenu.h);
+			ctx.fillText("Back", buttons.instructionsMenu.x+50-ctx.measureText("Back").width/2, buttons.instructionsMenu.y+10.75);
+			ctx.font = "24pt Arial, sans-serif";
+		}
+		
+		//--------------------------------------------------------------------------CREDITS---------------------------------------------------------------------------//
+		function updateCredits(){
+			
+			if(contains(buttons.secret,mouse)===true){
+				showSecret = true;
+			}else{
+				showSecret = false;
+			}
+			
+			if((contains(buttons.creditsMenu,mouse) && mouse.clicked)===true){
+				mouse.clicked=false;
+				changeState(MENU);
+			}
+			
+			if(mouse.clicked)
+				mouse.clicked=false;
+		}
+		function drawCredits(){
+			ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+			
+			if(showSecret){
+				ctx.drawImage(secret, 175, 200);
+				ctx.fillStyle = "#DDDDDD";
+				ctx.fillText("Appledog is Coming", ctx.canvas.width/2-ctx.measureText("Appledog is Coming").width/2, 540);
+				ctx.fillStyle = "#000000";
+			}
+			
+			ctx.fillText("Credits", ctx.canvas.width/2-ctx.measureText("Credits").width/2, 60);
+			ctx.fillText("I would like to thank my friends, Justin M.", ctx.canvas.width/2-ctx.measureText("I would like to thank my friends, Justin M.").width/2, 150);
+			ctx.fillText("and Miguel M., for helping drive my passion", ctx.canvas.width/2-ctx.measureText("and Miguel M., for helping drive my passion").width/2, 200);
+			ctx.fillText("for programming. I would also like to thank", ctx.canvas.width/2-ctx.measureText("for programming. I would also like to thank").width/2, 250);
+			ctx.fillText("my family for being my faithful game testers.", ctx.canvas.width/2-ctx.measureText("my family for being my faithful game testers.").width/2, 300);
+			ctx.fillText("I thank my girlfriend Lexi C. for her constant", ctx.canvas.width/2-ctx.measureText("I thank my girlfriend Lexi C. for her constant").width/2, 350);
+			ctx.fillText("support and encouragement. And I would like to", ctx.canvas.width/2-ctx.measureText("support and encouragement. And I would like to").width/2, 400);
+			ctx.fillText("thank my dog, Lucky, for being an awesome pupper.", ctx.canvas.width/2-ctx.measureText("thank my dog, Lucky, for being an awesome pupper.").width/2, 450);
+			
+			ctx.fillStyle = "#FFFFFF";
+			ctx.fillRect(buttons.creditsMenu.x, buttons.creditsMenu.y, buttons.creditsMenu.w, buttons.creditsMenu.h);
+			
+			if(contains(buttons.creditsMenu,mouse)){
+				ctx.fillStyle = "#FFFFCC";
+				ctx.fillRect(buttons.creditsMenu.x, buttons.creditsMenu.y, buttons.creditsMenu.w, buttons.creditsMenu.h);
+			}
+			
+			ctx.fillStyle = "#000000";
+			ctx.strokeRect(buttons.creditsMenu.x, buttons.creditsMenu.y, buttons.creditsMenu.w, buttons.creditsMenu.h);
+			ctx.font = "12pt Arial, sans-serif";
+			ctx.strokeRect(buttons.creditsMenu.x, buttons.creditsMenu.y, buttons.creditsMenu.w, buttons.creditsMenu.h);
+			ctx.fillText("Back", buttons.creditsMenu.x+50-ctx.measureText("Back").width/2, buttons.creditsMenu.y+10.75);
+			ctx.font = "24pt Arial, sans-serif";
+		}
+		
+		//----------------------------------------------------------------------------QUIT----------------------------------------------------------------------------//
+		function updateQuit(){
+			if((contains(buttons.quitQuit,mouse) && mouse.clicked)===true){
+				mouse.clicked=false;
+				window.close();
+			}
+			
+			if((contains(buttons.quitMenu,mouse) && mouse.clicked)===true){
+				mouse.clicked=false;
+				changeState(MENU);
+			}
+			
+			if(mouse.clicked)
+				mouse.clicked=false;
+		}
+		function drawQuit(){
+			ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+			
+			ctx.fillText("Are you sure?", ctx.canvas.width/2-ctx.measureText("Are you sure?").width/2, 200);
+			
+			ctx.fillStyle = "#FFFFFF";
+			ctx.fillRect(buttons.quitQuit.x, buttons.quitQuit.y, buttons.quitQuit.w, buttons.quitQuit.h);
+			ctx.fillRect(buttons.quitMenu.x, buttons.quitMenu.y, buttons.quitMenu.w, buttons.quitMenu.h);
+			
+			if(contains(buttons.quitQuit,mouse)){
+				ctx.fillStyle = "#FFFFCC";
+				ctx.fillRect(buttons.quitQuit.x, buttons.quitQuit.y, buttons.quitQuit.w, buttons.quitQuit.h);
+			}
+			else if(contains(buttons.quitMenu,mouse)){
+				ctx.fillStyle = "#FFFFCC";
+				ctx.fillRect(buttons.quitMenu.x, buttons.quitMenu.y, buttons.quitMenu.w, buttons.quitMenu.h);
+			}
+			
+			ctx.fillStyle = "#000000";
+			ctx.strokeRect(buttons.quitQuit.x, buttons.quitQuit.y, buttons.quitQuit.w, buttons.quitQuit.h);
+			ctx.strokeRect(buttons.quitMenu.x, buttons.quitMenu.y, buttons.quitMenu.w, buttons.quitMenu.h);
+			
+			ctx.fillText("Quit", buttons.quitQuit.x+100-ctx.measureText("Quit").width/2, buttons.quitQuit.y+20);
+			ctx.fillText("Back", buttons.quitMenu.x+100-ctx.measureText("Back").width/2, buttons.quitMenu.y+20);
+		}
+		
+		function initPlay(){
+			cards = initCards(initImgs());
+			players = new Array(0);
+			//playersNum=0;
+			if(playersNum>=4){
+				playerOne = {
+					comp: false,
+					name: "Dealer",
+					cards: new Array(0),
+					cardCount: 0,
+					bust: false,
+					stay: false,
+					show: false,
+					seeCards: false,
+					finished: false,
+					baseX: ctx.canvas.width/2,
+					baseY: 100,
+					turn: 0
+				};
+			}else{
+				playerOne = {
+					comp: true,
+					name: "Dealer",
+					risk: Math.floor(Math.random() * 7) + 12,
+					cards: new Array(0),
+					cardCount: 0,
+					bust: false,
+					stay: false,
+					show: false,
+					finished: false,
+					baseX: ctx.canvas.width/2,
+					baseY: 100,
+					turn: 0
+				};
+			}
+			players.push(playerOne);
+			
+			if(playersNum>=2){
+				playerTwo = {
+					comp: false,
+					name: "Player 2",
+					cards: new Array(0),
+					cardCount: 0,
+					bust: false,
+					stay: false,
+					show: false,
+					seeCards: false,
+					finished: false,
+					baseX: 600,
+					baseY: ctx.canvas.height/2,
+					turn: 1
+				};
+			}else{
+				playerTwo = {
+					comp: true,
+					name: "Player 2",
+					risk: Math.floor(Math.random() * 7) + 12,
+					cards: new Array(0),
+					cardCount: 0,
+					bust: false,
+					stay: false,
+					show: false,
+					finished: false,
+					baseX: 600,
+					baseY: ctx.canvas.height/2,
+					turn: 1
+				};
+			}
+			players.push(playerTwo);
+			
+			if(playersNum>=1){
+				playerThree = {
+					comp: false,
+					name: "Player 3",
+					cards: new Array(0),
+					cardCount: 0,
+					bust: false,
+					stay: false,
+					show: false,
+					seeCards: false,
+					finished: false,
+					baseX: ctx.canvas.width/2,
+					baseY: 500,
+					turn: 2
+				};
+			}else{
+				playerThree = {
+					comp: true,
+					name: "player 3",
+					risk: Math.floor(Math.random() * 7) + 12,
+					cards: new Array(0),
+					cardCount: 0,
+					bust: false,
+					stay: false,
+					show: false,
+					finished: false,
+					baseX: ctx.canvas.width/2,
+					baseY: 500,
+					turn: 2
+				}
+			}
+			players.push(playerThree);
+			
+			if(playersNum>=3){
+				playerFour = {
+					comp: false,
+					name: "Player 4",
+					cards: new Array(0),
+					cardCount: 0,
+					bust: false,
+					stay: false,
+					show: false,
+					seeCards: false,
+					finished: false,
+					baseX: 200,
+					baseY: ctx.canvas.height/2,
+					turn: 3
+				};
+			}else{
+				playerFour = {
+					comp: true,
+					name: "Player 4",
+					risk: Math.floor(Math.random() * 7) + 12,
+					cards: new Array(0),
+					cardCount: 0,
+					bust: false,
+					stay: false,
+					show: false,
+					finished: false,
+					baseX: 200,
+					baseY: ctx.canvas.height/2,
+					turn: 3
+				};
+			}
+			players.push(playerFour);
+			
+			winCheck=false;
+			winners = new Array(0);
+			rotation = 90;
+			zoomScale = 4;
+			zoom = false;
+			cardScale = .25;
+			setUp = true;
+			turn = 0;
+			cardDrawn = false;
+			cardsDrawn = -1;
+			turnDone = false;
+			waitEnd = false;
+			waitShow = false;
+			waitEndTime = 0;
+			waitShowTime = 0;
+		}
+		
+		function deal(face, turn){
+			var up;
+			if (face == "up")
+				up = true;
+			else if(face == "down")
+				up = false;
+			
+			if(turn==0)
+				players[0].cards.push(getRandomCard(true,up));
+			else if(turn==1)
+				players[1].cards.push(getRandomCard(true,up));
+			else if(turn==2)
+				players[2].cards.push(getRandomCard(true,up));
+			else if(turn==3)
+				players[3].cards.push(getRandomCard(true,up));
+			
+		}
+		
+		function getRandomCard(remove, face){
+			var r = Math.floor(Math.random() * cards.length);
+			var cardTemp = cards[r];
+			if(remove)
+				cards.splice(r, 1);
+			if(face)
+				cardTemp.faceUp = true;
+			else
+				cardTemp.faceUp = false;
+			return cardTemp;
+		}
+		
+		function moveCard(turn){
+			if(turn==0){
+				if(players[0].cards[players[0].cards.length-1].x*(1/cardScale)>-25*(1/cardScale))
+					players[0].cards[players[0].cards.length-1].x-=1*(1/cardScale);
+				else if(players[0].cards[players[0].cards.length-1].x*(1/cardScale)<-35*(1/cardScale))
+					players[0].cards[players[0].cards.length-1].x+=1*(1/cardScale);
+				else
+					players[0].cards[players[0].cards.length-1].x = -30;
+				
+				if(players[0].cards[players[0].cards.length-1].y*(1/cardScale)>-55*(1/cardScale))
+					players[0].cards[players[0].cards.length-1].y-=1*(1/cardScale);
+				else if(players[0].cards[players[0].cards.length-1].y*(1/cardScale)<-65*(1/cardScale))
+					players[0].cards[players[0].cards.length-1].y+=1*(1/cardScale);
+				else
+					players[0].cards[players[0].cards.length-1].y = -60;
+				
+				if((players[0].cards[players[0].cards.length-1].x == -30)&&(players[0].cards[players[0].cards.length-1].y == -60))
+					cardDrawn=false;
+			}else if(turn==1){
+				if(players[1].cards[players[1].cards.length-1].x*(1/cardScale)>-135*(1/cardScale))
+					players[1].cards[players[1].cards.length-1].x-=1*(1/cardScale);
+				else if(players[1].cards[players[1].cards.length-1].x*(1/cardScale)<-145*(1/cardScale))
+					players[1].cards[players[1].cards.length-1].x+=1*(1/cardScale);
+				else
+					players[1].cards[players[1].cards.length-1].x = -140;
+				
+				if(players[1].cards[players[1].cards.length-1].y*(1/cardScale)>-225*(1/cardScale))
+					players[1].cards[players[1].cards.length-1].y-=1*(1/cardScale);
+				else if(players[1].cards[players[1].cards.length-1].y*(1/cardScale)<-235*(1/cardScale))
+					players[1].cards[players[1].cards.length-1].y+=1*(1/cardScale);
+				else
+					players[1].cards[players[1].cards.length-1].y = -230;
+				
+				if((players[1].cards[players[1].cards.length-1].x == -140)&&(players[1].cards[players[1].cards.length-1].y == -230))
+					cardDrawn=false;
+			}else if(turn==2){
+				if(players[2].cards[players[2].cards.length-1].x*(1/cardScale)>35*(1/cardScale))
+					players[2].cards[players[2].cards.length-1].x-=1*(1/cardScale);
+				else if(players[2].cards[players[2].cards.length-1].x*(1/cardScale)<25*(1/cardScale))
+					players[2].cards[players[2].cards.length-1].x+=1*(1/cardScale);
+				else
+					players[2].cards[players[2].cards.length-1].x = 30;
+				
+				if(players[2].cards[players[2].cards.length-1].y*(1/cardScale)>-335*(1/cardScale))
+					players[2].cards[players[2].cards.length-1].y-=1*(1/cardScale);
+				else if(players[2].cards[players[2].cards.length-1].y*(1/cardScale)<-345*(1/cardScale))
+					players[2].cards[players[2].cards.length-1].y+=1*(1/cardScale);
+				else
+					players[2].cards[players[2].cards.length-1].y = -340;
+				
+				if((players[2].cards[players[2].cards.length-1].x == 30)&&(players[2].cards[players[2].cards.length-1].y == -340))
+					cardDrawn=false;
+			}else if(turn==3){
+				if(players[3].cards[players[3].cards.length-1].x*(1/cardScale)>145*(1/cardScale))
+					players[3].cards[players[3].cards.length-1].x-=1*(1/cardScale);
+				else if(players[3].cards[players[3].cards.length-1].x*(1/cardScale)<135*(1/cardScale))
+					players[3].cards[players[3].cards.length-1].x+=1*(1/cardScale);
+				else
+					players[3].cards[players[3].cards.length-1].x = 140;
+				
+				if(players[3].cards[players[3].cards.length-1].y*(1/cardScale)>-225*(1/cardScale))
+					players[3].cards[players[3].cards.length-1].y-=1*(1/cardScale);
+				else if(players[3].cards[players[3].cards.length-1].y*(1/cardScale)<-235*(1/cardScale))
+					players[3].cards[players[3].cards.length-1].y+=1*(1/cardScale);
+				else
+					players[3].cards[players[3].cards.length-1].y = -230;
+					
+				if((players[3].cards[players[3].cards.length-1].x == 140)&&(players[3].cards[players[3].cards.length-1].y == -230))
+					cardDrawn=false;
+			}
+		}
+		
+		function changeState(newState){
+			
+			if(timerID != -1)
+				clearInterval(timerID);
+			
+			if(newState===MENU)
+				timerID = setInterval(function(){updateMenu();drawMenu(ctx);}, 1000/60);
+			
+			else if(newState===PLAYMENU)
+				timerID = setInterval(function(){updatePlayMenu();drawPlayMenu(ctx);}, 1000/60);
+			
+			else if(newState===PLAY)
+				timerID = setInterval(function(){updatePlay();drawPlay(ctx);}, 1000/60);
+				
+			else if(newState===GAMEOVER)
+				timerID = setInterval(function(){updateGameOver();drawGameOver(ctx);}, 1000/60);
+			
+			else if(newState===INSTRUCTIONS)
+				timerID = setInterval(function(){updateInstructions();drawInstructions(ctx);}, 1000/60);
+			
+			else if(newState===CREDITS)
+				timerID = setInterval(function(){updateCredits();drawCredits(ctx);}, 1000/60);
+			
+			else if(newState===QUIT)
+				timerID = setInterval(function(){updateQuit();drawQuit(ctx);}, 1000/60);
+			
+			state=newState;
+		}
+		
+		function initCards(cardImgs){
+			
+			var tempCards = new Array(52);
+			var shuffledCards = new Array(0);
+			var num = 0;
+			
+			//create cards
+			for(var i=0; i<52; i++){
+				tempCards[i] = {
+					card: "-",
+					suit: "-",
+					value: 0,
+					x: -7,
+					y: -120,
+					faceUp: true,
+					faceUpImg: cardImgs[i],
+					faceDownImg: cardBack
+				}
+				
+				if(i<13){
+					tempCards[i].suit = "Clubs";
+					
+					if(i==1)
+						num=2;
+					tempCards[i].value = num;
+					tempCards[i].card = ""+num;
+					num++;
+					
+					if(i==0){
+						tempCards[i].value = 11;
+						tempCards[i].card = "Ace";
+					}if(i==10){
+						tempCards[i].value = 10;
+						tempCards[i].card = "Jack";
+					}if(i==11){
+						tempCards[i].value = 10;
+						tempCards[i].card = "Queen";
+					}if(i==12){
+						tempCards[i].value = 10;
+						tempCards[i].card = "King";
+					}
+				}else if(i<26){
+					tempCards[i].suit = "Diamonds";
+					
+					if(i==14)
+						num=2;
+					tempCards[i].value = num;
+					tempCards[i].card = ""+num;
+					num++;
+					
+					if(i==13){
+						tempCards[i].value = 11;
+						tempCards[i].card = "Ace";
+					}if(i==23){
+						tempCards[i].value = 10;
+						tempCards[i].card = "Jack";
+					}if(i==24){
+						tempCards[i].value = 10;
+						tempCards[i].card = "Queen";
+					}if(i==25){
+						tempCards[i].value = 10;
+						tempCards[i].card = "King";
+					}
+				}else if(i<39){
+					tempCards[i].suit = "Hearts";
+					
+					if(i==27)
+						num=2;
+					tempCards[i].value = num;
+					tempCards[i].card = ""+num;
+					num++;
+					
+					if(i==26){
+						tempCards[i].value = 11;
+						tempCards[i].card = "Ace";
+					}if(i==36){
+						tempCards[i].value = 10;
+						tempCards[i].card = "Jack";
+					}if(i==37){
+						tempCards[i].value = 10;
+						tempCards[i].card = "Queen";
+					}if(i==38){
+						tempCards[i].value = 10;
+						tempCards[i].card = "King";
+					}
+				}else{
+					tempCards[i].suit = "Spades";
+					
+					if(i==40)
+						num=2;
+					tempCards[i].value = num;
+					tempCards[i].card = ""+num;
+					num++;
+					
+					if(i==39){
+						tempCards[i].value = 11;
+						tempCards[i].card = "Ace";
+					}if(i==49){
+						tempCards[i].value = 10;
+						tempCards[i].card = "Jack";
+					}if(i==50){
+						tempCards[i].value = 10;
+						tempCards[i].card = "Queen";
+					}if(i==51){
+						tempCards[i].value = 10;
+						tempCards[i].card = "King";
+					}
+				}
+			}
+			
+			//shuffle cards
+			for(var i=0; i<52; i++){
+				var r = Math.floor(Math.random() * tempCards.length);
+				while(r>=tempCards.length){
+					r = Math.floor(Math.random() * tempCards.length);
+				}
+				shuffledCards.push(tempCards[r]);
+				tempCards.splice(r, 1);
+			}
+			
+			return shuffledCards;
+		}
+		
+		function initImgs(){
+			
+			var cardImgs = new Array(0);
+			
+			var c1 = new Image();
+			c1.src = "images/c1.png";
+			cardImgs.push(c1);
+			
+			var c2 = new Image();
+			c2.src = "images/c2.png";
+			cardImgs.push(c2);
+			
+			var c3 = new Image();
+			c3.src = "images/c3.png";
+			cardImgs.push(c3);
+			
+			var c4 = new Image();
+			c4.src = "images/c4.png";
+			cardImgs.push(c4);
+			
+			var c5 = new Image();
+			c5.src = "images/c5.png";
+			cardImgs.push(c5);
+			
+			var c6 = new Image();
+			c6.src = "images/c6.png";
+			cardImgs.push(c6);
+			
+			var c7 = new Image();
+			c7.src = "images/c7.png";
+			cardImgs.push(c7);
+			
+			var c8 = new Image();
+			c8.src = "images/c8.png";
+			cardImgs.push(c8);
+			
+			var c9 = new Image();
+			c9.src = "images/c9.png";
+			cardImgs.push(c9);
+			
+			var c10 = new Image();
+			c10.src = "images/c10.png";
+			cardImgs.push(c10);
+			
+			var cj = new Image();
+			cj.src = "images/cj.png";
+			cardImgs.push(cj);
+			
+			var cq = new Image();
+			cq.src = "images/cq.png";
+			cardImgs.push(cq);
+			
+			var ck = new Image();
+			ck.src = "images/ck.png";
+			cardImgs.push(ck);
+			
+			var d1 = new Image();
+			d1.src = "images/d1.png";
+			cardImgs.push(d1);
+			
+			var d2 = new Image();
+			d2.src = "images/d2.png";
+			cardImgs.push(d2);
+			
+			var d3 = new Image();
+			d3.src = "images/d3.png";
+			cardImgs.push(d3);
+			
+			var d4 = new Image();
+			d4.src = "images/d4.png";
+			cardImgs.push(d4);
+			
+			var d5 = new Image();
+			d5.src = "images/d5.png";
+			cardImgs.push(d5);
+			
+			var d6 = new Image();
+			d6.src = "images/d6.png";
+			cardImgs.push(d6);
+			
+			var d7 = new Image();
+			d7.src = "images/d7.png";
+			cardImgs.push(d7);
+			
+			var d8 = new Image();
+			d8.src = "images/d8.png";
+			cardImgs.push(d8);
+			
+			var d9 = new Image();
+			d9.src = "images/d9.png";
+			cardImgs.push(d9);
+			
+			var d10 = new Image();
+			d10.src = "images/d10.png";
+			cardImgs.push(d10);
+			
+			var dj = new Image();
+			dj.src = "images/dj.png";
+			cardImgs.push(dj);
+			
+			var dq = new Image();
+			dq.src = "images/dq.png";
+			cardImgs.push(dq);
+			
+			var dk = new Image();
+			dk.src = "images/dk.png";
+			cardImgs.push(dk);
+			
+			var h1 = new Image();
+			h1.src = "images/h1.png";
+			cardImgs.push(h1);
+			
+			var h2 = new Image();
+			h2.src = "images/h2.png";
+			cardImgs.push(h2);
+			
+			var h3 = new Image();
+			h3.src = "images/h3.png";
+			cardImgs.push(h3);
+			
+			var h4 = new Image();
+			h4.src = "images/h4.png";
+			cardImgs.push(h4);
+			
+			var h5 = new Image();
+			h5.src = "images/h5.png";
+			cardImgs.push(h5);
+			
+			var h6 = new Image();
+			h6.src = "images/h6.png";
+			cardImgs.push(h6);
+			
+			var h7 = new Image();
+			h7.src = "images/h7.png";
+			cardImgs.push(h7);
+			
+			var h8 = new Image();
+			h8.src = "images/h8.png";
+			cardImgs.push(h8);
+			
+			var h9 = new Image();
+			h9.src = "images/h9.png";
+			cardImgs.push(h9);
+			
+			var h10 = new Image();
+			h10.src = "images/h10.png";
+			cardImgs.push(h10);
+			
+			var hj = new Image();
+			hj.src = "images/hj.png";
+			cardImgs.push(hj);
+			
+			var hq = new Image();
+			hq.src = "images/hq.png";
+			cardImgs.push(hq);
+			
+			var hk = new Image();
+			hk.src = "images/hk.png";
+			cardImgs.push(hk);
+			
+			var s1 = new Image();
+			s1.src = "images/s1.png";
+			cardImgs.push(s1);
+			
+			var s2 = new Image();
+			s2.src = "images/s2.png";
+			cardImgs.push(s2);
+			
+			var s3 = new Image();
+			s3.src = "images/s3.png";
+			cardImgs.push(s3);
+			
+			var s4 = new Image();
+			s4.src = "images/s4.png";
+			cardImgs.push(s4);
+			
+			var s5 = new Image();
+			s5.src = "images/s5.png";
+			cardImgs.push(s5);
+			
+			var s6 = new Image();
+			s6.src = "images/s6.png";
+			cardImgs.push(s6);
+			
+			var s7 = new Image();
+			s7.src = "images/s7.png";
+			cardImgs.push(s7);
+			
+			var s8 = new Image();
+			s8.src = "images/s8.png";
+			cardImgs.push(s8);
+			
+			var s9 = new Image();
+			s9.src = "images/s9.png";
+			cardImgs.push(s9);
+			
+			var s10 = new Image();
+			s10.src = "images/s10.png";
+			cardImgs.push(s10);
+			
+			var sj = new Image();
+			sj.src = "images/sj.png";
+			cardImgs.push(sj);
+			
+			var sq = new Image();
+			sq.src = "images/sq.png";
+			cardImgs.push(sq);
+			
+			var sk = new Image();
+			sk.src = "images/sk.png";
+			cardImgs.push(sk);
+			
+			return cardImgs;
+		}
+		
+		function contains(r,m){
+			return !((r.x>m.x) || (r.y>m.y) || (m.x>r.x+r.w) || (m.y>r.y+r.h));
+		}
+		
+		function setWait(secs){
+			var time = Date.now()+(secs*1000);
+			return time;
+		}
+		
+		function mouseMoved(e){
+			var evt = e || window.event;
+			mouse.x = evt.pageX - ctx.canvas.offsetLeft;
+			mouse.y = evt.pageY - ctx.canvas.offsetTop;
+		}
+		
+		function tellWhenClicked(e){
+			var evt = e || window.event;
+			mouse.clicked=true;
+		}
+		
+		function main(){
+			ctx = document.getElementById('canvas').getContext("2d");
+			document.addEventListener('mousemove', mouseMoved);
+			document.addEventListener('click', tellWhenClicked);
+			document.addEventListener('drag', tellWhenClicked);
+			init();
+			changeState(state);
+		}
+		
+		main();
+		
+	</script>
+</body>
+</html>
